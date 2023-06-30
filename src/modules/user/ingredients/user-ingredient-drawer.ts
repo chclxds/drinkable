@@ -1,14 +1,17 @@
 import { inject, NewInstance } from 'aurelia-framework';
 import { DialogController } from 'aurelia-dialog';
 import { CreatedIngredientModel, Ingredient } from 'domain/entities/ingredient';
-import { IngredientService } from 'services/ingredient-service';
+import { IngredientService, UpdateIngredientRequest } from 'services/ingredient-service';
 import { ValidationController, ValidationRules } from 'aurelia-validation';
+import { getSpiritTypeFilters, SpiritType } from 'domain/enums/spirit-type';
 
 @inject(DialogController, IngredientService, NewInstance.of(ValidationController))
-export class ingredientDialog {
-    public isEditMode: boolean;
+export class UserIngredientDrawer {
     public ingredient: CreatedIngredientModel;
-    public errorMessage = '';
+    public spirits = getSpiritTypeFilters();
+    public selectedSpirit: SpiritType = SpiritType.None;
+    public isNew: boolean = true;
+    public usedInCocktailNames: string[] = [];
     private _ingredients: Ingredient[] = [];
 
     constructor(
@@ -18,15 +21,15 @@ export class ingredientDialog {
     ) {}
 
     activate(ingredient: CreatedIngredientModel) {
-        this.isEditMode = ingredient !== null;
-
-        this.ingredient = this.isEditMode ? ingredient : new CreatedIngredientModel();
+        this.isNew = ingredient === null;
+        this.ingredient = this.isNew ? new CreatedIngredientModel() : ingredient;
+        this.selectedSpirit = this.ingredient.spiritType ?? null;
 
         this._ingredients = this._ingredientService.getIngredients().filter(x => x.id !== ingredient?.id);
 
         ValidationRules.customRule(
             'ingredientNotAlreadyCreated',
-            (value, object, list: Ingredient[]) => {
+            (value, _, list: Ingredient[]) => {
                 return list.find(y => y.name.toLocaleLowerCase() === value.toLocaleLowerCase()) === undefined;
             },
             'This ingredient does already exist!',
@@ -38,6 +41,11 @@ export class ingredientDialog {
             .withMessage('Name is required')
             .then()
             .satisfiesRule('ingredientNotAlreadyCreated', this._ingredients)
+            .ensure('abv')
+            .min(0)
+            .when(x => x !== null && x !== undefined)
+            .max(100)
+            .when(x => x !== null && x !== undefined)
             .on(this.ingredient);
     }
 
@@ -45,7 +53,7 @@ export class ingredientDialog {
         await this._ingredientService.deleteIngredient(this.ingredient.id);
         const ingredientDialogAction = {
             action: 'delete',
-            ingredient: this.ingredient,
+            ingredient: this.ingredient
         };
         this._dialogController.ok(ingredientDialogAction);
     }
@@ -53,6 +61,7 @@ export class ingredientDialog {
     cancel() {
         this._dialogController.cancel();
     }
+
     async ok() {
         const result = await this._validationController.validate();
 
@@ -60,10 +69,21 @@ export class ingredientDialog {
             return;
         }
 
-        if (this.isEditMode === false) {
-            await this._ingredientService.createIngredient(this.ingredient.name);
+        if (this.isNew) {
+            let request = {
+                name: this.ingredient.name,
+                abv: Number(this.ingredient.abv),
+                spiritType: this.selectedSpirit ?? SpiritType.None
+            };
+            await this._ingredientService.createIngredient(request);
         } else {
-            await this._ingredientService.updateIngredient(this.ingredient);
+            let request: UpdateIngredientRequest = {
+                id: this.ingredient.id,
+                name: this.ingredient.name,
+                abv: Number(this.ingredient.abv),
+                spiritType: this.selectedSpirit ?? SpiritType.None
+            };
+            await this._ingredientService.updateIngredient(request);
         }
 
         this._dialogController.ok();

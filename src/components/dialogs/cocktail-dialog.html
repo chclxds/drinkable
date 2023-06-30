@@ -140,9 +140,9 @@
             </div>
 
             <section>
-                <div class="metadata">
-                    <div>
-                        <p class="font-bold" t="category"></p>
+                <div class="flex w-full text-center">
+                    <div class="flex-1">
+                        <p class="font-bold text-sm" t="category"></p>
                         <h6
                             if.bind="!isEditMode"
                             class="text-sm"
@@ -158,16 +158,26 @@
                                 t.bind="category.translation"></option>
                         </select>
                     </div>
-                    <span class="text-2xl text-base-content text-opacity-75">/</span>
-                    <div>
-                        <p class="font-bold" t="ingredients"></p>
+
+                    <div if.bind="!isEditMode" class="flex-1">
+                        <p class="font-bold text-sm" t="ingredients"></p>
                         <h6 class="text-sm" data-cy="ingredients-number">${extendedIngredientGroup.length}</h6>
+                    </div>
+
+                    <div if.bind="!isEditMode" class="flex-1">
+                        <p class="font-bold text-sm" t="abv"></p>
+                        <h6 class="text-sm" data-cy="cocktail-abv">
+                            ${cocktail.alcoholInformation.alcoholPercentage}%
+                        </h6>
                     </div>
                 </div>
             </section>
 
             <div class="flex justify-center flex-wrap px-2">
-                <p repeat.for="tag of tags" class="badge badge-md badge-secondary m-1" t.bind="tag.translation"></p>
+                <p repeat.for="tag of tags" class="badge badge-md badge-secondary m-1">
+                    <span if.bind="tag.translation" t.bind="tag.translation"></span>
+                    <span else>${tag.name}</span>
+                </p>
 
                 <div if.bind="isEditMode" click.delegate="editTags()" class="badge badge-md gap-1 m-1">
                     <icon-add class="w-4 h-4"></icon-add>
@@ -288,7 +298,10 @@
 
             <section>
                 <h5 class="font-bold mb-2" t="instructions"></h5>
-                <p if.bind="!isEditMode" class="whitespace-pre-wrap">${cocktail.instructions}</p>
+                <div if.bind="!isEditMode">
+                    <p if.bind="cocktail.instructions" class="whitespace-pre-wrap">${cocktail.instructions}</p>
+                    <p class="whitespace-pre-wrap" else t="instructions:${cocktail.translation}"></p>
+                </div>
                 <textarea
                     if.bind="isEditMode"
                     rows="5"

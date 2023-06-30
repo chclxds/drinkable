@@ -1,17 +1,15 @@
 import { DrinkCategory } from 'domain/enums/drink-category';
 import { Unit } from 'domain/enums/unit';
 import { Ingredient } from './ingredient';
-import { Tag } from 'data/tags-data';
-
+import { CocktailAlcoholInformation } from 'domain/cocktail-alcohol-information';
 export class StaticCocktail {
     id: string;
-    name: string;
+    translation: string;
     imageSrc: string;
     isImagePortrait: boolean;
     category: DrinkCategory;
     ingredientGroups: IngredientGroup[];
-    instructions: string;
-    tags: Tag[];
+    tags: string[];
 }
 
 export class Cocktail extends StaticCocktail {
@@ -20,8 +18,11 @@ export class Cocktail extends StaticCocktail {
         this.ingredientGroups = [];
         this.tags = [];
     }
+    name: string;
+    instructions?: string;
     rating?: number;
     isFavorite?: boolean;
+    alcoholInformation?: CocktailAlcoholInformation;
 }
 
 export class IngredientGroup {

@@ -1,5 +1,5 @@
 import { ThemeService } from 'services/theme-service';
-import { inject, observable } from 'aurelia-framework';
+import { autoinject, observable } from 'aurelia-framework';
 import { MessuarementSystem } from 'domain/enums/messuarement-system';
 import { LocalStorageService } from 'services/local-storage-service';
 import { SettingEntity } from 'domain/entities/setting-entity';
@@ -7,10 +7,9 @@ import { I18N } from 'aurelia-i18n';
 import { IngredientService } from 'services/ingredient-service';
 import { getLanguages } from 'data/languages';
 import { CocktailService } from 'services/cocktail-service';
-import { TranslationStatus } from './translation-status';
 
-@inject(ThemeService, LocalStorageService, I18N, IngredientService, CocktailService)
-export class GeneralSettings {
+@autoinject
+export class Settings {
     @observable public selectedTheme: string;
     @observable public selectedLanguage: string;
     @observable public selectedMessuarementSystem: MessuarementSystem;
@@ -26,8 +25,10 @@ export class GeneralSettings {
     public messuarementSystems = [{ value: MessuarementSystem.Imperial }, { value: MessuarementSystem.Metric }];
 
     public translationStatus: TranslationStatus = {
-        basic: undefined,
-        ingredients: undefined,
+        basic: 100,
+        ingredients: 100,
+        cocktails: 100,
+        instructions: 100,
         isDefaultLanguage: true
     };
 
@@ -110,6 +111,7 @@ export class GeneralSettings {
         await this.setLocale(locale);
 
         this._ingredientService.updateTranslation();
+        this._cocktailService.updateTranslation();
         this.setTranslationStatus(locale);
 
         this.themes = JSON.parse(JSON.stringify(this.themes));
@@ -117,35 +119,42 @@ export class GeneralSettings {
     }
 
     private setTranslationStatus(locale: string) {
-        let enTranslationKeys = Object.keys(this._i18n.i18next.store.data['en']?.translation).filter(
-            x => !this.ignoreKeys.includes(x)
-        ).length;
-
-        let enIngredientKeys = Object.keys(this._i18n.i18next.store.data['en']?.ingredients).length;
-
         if (locale === undefined || locale === 'en') {
             this.translationStatus = {
-                basic: undefined,
-                ingredients: undefined,
+                basic: 100,
+                ingredients: 100,
+                cocktails: 100,
+                instructions: 100,
                 isDefaultLanguage: true
             };
             return;
         }
 
-        let translationKeys = Object.keys(this._i18n.i18next.store.data[locale].translation).filter(
-            x => !this.ignoreKeys.includes(x)
-        ).length;
-
-        let ingredientKeys =
-            this._i18n.i18next.store.data[locale]?.ingredients !== undefined
-                ? Object.keys(this._i18n.i18next.store.data[locale]?.ingredients)?.length
-                : 0;
-
         this.translationStatus = {
-            basic: Math.floor((translationKeys / enTranslationKeys) * 100),
-            ingredients: Math.floor((ingredientKeys / enIngredientKeys) * 100),
+            basic: this.getTranslationValue(locale, 'translation'),
+            ingredients: this.getTranslationValue(locale, 'ingredients'),
+            cocktails: this.getTranslationValue(locale, 'cocktails'),
+            instructions: this.getTranslationValue(locale, 'instructions'),
             isDefaultLanguage: false
         };
+    }
+
+    private getTranslationValue(locale: string, file: TranslationFile) {
+        {
+            let enKeys = this.getTranslationKeys('en', file).filter(x => !this.ignoreKeys.includes(x));
+
+            let keys = this.getTranslationKeys(locale, file)
+                .filter(x => !this.ignoreKeys.includes(x))
+                .filter(x => {
+                    if (enKeys.includes(x)) {
+                        return true;
+                    }
+                    console.warn(`Unknown translation key: ${x}. \nFile: ${file}. \nLocale: ${locale}`);
+                    return false;
+                });
+
+            return Math.floor((keys.length / enKeys.length) * 100);
+        }
     }
 
     private async setLocale(locale: string) {
@@ -155,4 +164,35 @@ export class GeneralSettings {
             console.error(error);
         }
     }
+
+    private getTranslationKeys(locale: string, prop: string) {
+        const stringKeys: string[] = [];
+
+        const traverseObject = (obj: any, parentKey: string = '') => {
+            for (const key in obj) {
+                const value = obj[key];
+                const currentKey = parentKey ? `${parentKey}.${key}` : key;
+                if (typeof value === 'string') {
+                    stringKeys.push(currentKey);
+                } else if (typeof value === 'object') {
+                    traverseObject(value, currentKey);
+                }
+            }
+        };
+
+        const input = this._i18n.i18next.store.data[locale]?.[prop];
+        traverseObject(input);
+
+        return stringKeys;
+    }
 }
+
+export interface TranslationStatus {
+    basic: number;
+    ingredients: number;
+    cocktails: number;
+    instructions: number;
+    isDefaultLanguage: boolean;
+}
+
+export type TranslationFile = 'translation' | 'ingredients' | 'cocktails' | 'instructions';

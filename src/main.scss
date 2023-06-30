@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+.full-dynamic-height {
+    height: 100vh;
+    height: 100dvh;
+}
+
 html,
 body {
     overscroll-behavior: none;
@@ -249,7 +254,7 @@ body {
     align-items: center;
     padding: 0.25em 0.5em;
     background-color: var(--bg);
-    border-bottom: 1px solid var(--list-item-seperator-color);
+
     > p {
         padding-left: 1em;
     }
